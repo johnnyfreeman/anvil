@@ -1,10 +1,11 @@
-package main
+package core
 
 import (
 	"context"
 )
 
 type Action interface {
+	Name() string
 	Handle(ctx context.Context, executor Executor) error
 }
 
@@ -40,6 +41,10 @@ func NewCreateUserAction(username string, opts ...CreateUserOptsFunc) *CreateUse
 	return &CreateUserAction{
 		CreateUserOpts: o,
 	}
+}
+
+func (a CreateUserAction) Name() string {
+	return "Create User"
 }
 
 func (a CreateUserAction) Handle(ctx context.Context, ex Executor, os OS) error {

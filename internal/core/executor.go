@@ -1,8 +1,9 @@
-package main
+package core
 
 import (
 	"context"
 	"slices"
+	"time"
 )
 
 type Executor interface {
@@ -34,6 +35,7 @@ type FakeResponse struct {
 }
 
 func (e *FakeExecutor) Execute(ctx context.Context, command string) (string, error) {
+	time.Sleep(3000)
 	e.History = append(e.History, command)
 
 	if resp, ok := e.Responses[command]; ok {
