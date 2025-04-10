@@ -2,6 +2,7 @@ package progress
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/johnnyfreeman/anvil/internal/core"
 )
 
 type Task struct {
@@ -19,11 +21,13 @@ type Task struct {
 }
 
 type tuiModel struct {
-	actions  list.Model
-	viewport viewport.Model
-	help     help.Model
-	loaded   bool
-	quitting bool
+	actions   list.Model
+	viewport  viewport.Model
+	help      help.Model
+	loaded    bool
+	quitting  bool
+	executor  core.Executor
+	logBuffer string
 }
 
 func (m *tuiModel) initActions(width, height int) {
@@ -31,8 +35,11 @@ func (m *tuiModel) initActions(width, height int) {
 	m.actions.Title = "Actions"
 	m.actions.SetItems([]list.Item{
 		ActionType{"Create User", "Ensure a user exists", func() tea.Msg {
-			time.Sleep(2 * time.Second)
-			return ActionDoneMsg{Output: "✔ Created user 'deploy' with UID 1001"}
+			username := "john"
+			os := core.Ubuntu{}
+			action := core.NewCreateUserAction(username)
+			go action.Handle(context.TODO(), m.executor, os)
+			return nil
 		}},
 		ActionType{"Group User", "Ensure user belongs to a group", func() tea.Msg {
 			time.Sleep(2 * time.Second)
@@ -143,9 +150,17 @@ func (a ActionType) FilterValue() string {
 }
 
 func NewTUIProgram() {
-	m := tuiModel{
+	ubuntu := core.Ubuntu{}
+	m := &tuiModel{
 		actions:  list.Model{},
 		viewport: viewport.Model{},
+		executor: &core.FakeExecutor{
+			C: make(chan string),
+			Responses: map[string]core.FakeResponse{
+				ubuntu.CheckUser("john"):  {Err: errors.New("no such user")},
+				ubuntu.CreateUser("john"): {Output: "user created"},
+			},
+		},
 	}
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {
@@ -158,13 +173,24 @@ type taskDoneMsg struct {
 	err error
 }
 
-type tickMsg time.Time
-
-func (m tuiModel) Init() tea.Cmd {
-	return nil
+type tickMsg struct {
+	Output string
 }
 
-func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *tuiModel) Init() tea.Cmd {
+	return m.Tick
+}
+
+func (m *tuiModel) Tick() tea.Msg {
+	if m.executor == nil {
+		return tickMsg{Output: "executor is nil!"}
+	}
+	return tickMsg{
+		Output: <-m.executor.Channel(),
+	}
+}
+
+func (m *tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -172,9 +198,13 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.loaded = true
 			m.initActions(msg.Width, msg.Height)
 		}
-	case ActionDoneMsg:
-		m.viewport.SetContent(msg.Output)
-		m.actions.StopSpinner()
+	case tickMsg:
+		m.logBuffer += msg.Output + "\n"
+		m.viewport.SetContent(m.logBuffer)
+		cmds = append(cmds, m.Tick)
+	// case ActionDoneMsg:
+	// 	m.viewport.SetContent(msg.Output)
+	// 	m.actions.StopSpinner()
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
@@ -194,7 +224,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m tuiModel) View() string {
+func (m *tuiModel) View() string {
 	if m.quitting {
 		return ""
 	}
