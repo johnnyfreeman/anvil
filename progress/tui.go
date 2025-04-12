@@ -39,7 +39,7 @@ func (m *tuiModel) initActions(width, height int) {
 			os := core.Ubuntu{}
 			action := core.NewCreateUserAction(username)
 			go action.Handle(context.TODO(), m.executor, os)
-			return nil
+			return ActionDoneMsg{}
 		}},
 		ActionType{"Group User", "Ensure user belongs to a group", func() tea.Msg {
 			time.Sleep(2 * time.Second)
@@ -158,7 +158,7 @@ func NewTUIProgram() {
 			C: make(chan string),
 			Responses: map[string]core.FakeResponse{
 				ubuntu.CheckUser("john"):  {Err: errors.New("no such user")},
-				ubuntu.CreateUser("john"): {Output: "user created"},
+				ubuntu.CreateUser("john"): {Output: lipgloss.NewStyle().Foreground(lipgloss.Color("63")).Render("user created")},
 			},
 		},
 	}
@@ -182,12 +182,14 @@ func (m *tuiModel) Init() tea.Cmd {
 }
 
 func (m *tuiModel) Tick() tea.Msg {
-	if m.executor == nil {
-		return tickMsg{Output: "executor is nil!"}
+	select {
+	case output := <-m.executor.Channel():
+		return tickMsg{
+			Output: output,
+		}
 	}
-	return tickMsg{
-		Output: <-m.executor.Channel(),
-	}
+
+	return nil
 }
 
 func (m *tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -202,9 +204,8 @@ func (m *tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logBuffer += msg.Output + "\n"
 		m.viewport.SetContent(m.logBuffer)
 		cmds = append(cmds, m.Tick)
-	// case ActionDoneMsg:
-	// 	m.viewport.SetContent(msg.Output)
-	// 	m.actions.StopSpinner()
+	case ActionDoneMsg:
+		m.actions.StopSpinner()
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":

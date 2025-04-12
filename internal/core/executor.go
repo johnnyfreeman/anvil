@@ -12,6 +12,7 @@ type Executor interface {
 }
 
 type SshExecutor struct {
+	Server
 	C chan string
 }
 
