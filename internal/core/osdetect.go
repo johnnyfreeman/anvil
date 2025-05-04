@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"context"
@@ -15,14 +15,14 @@ type OSInfo struct {
 }
 
 func DetectOS(ctx context.Context, executor Executor) (*OSInfo, error) {
-	output, err := executor.Execute(ctx, "cat /etc/os-release")
+	output, err := executor.Execute(ctx, "cat /etc/os-release", nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to exec on target: %w", err)
 	}
 
 	info := OSInfo{}
 
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}

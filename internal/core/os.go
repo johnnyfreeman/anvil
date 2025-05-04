@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"fmt"
@@ -29,7 +29,7 @@ type Debian struct{ DebianFamily }
 
 type FedoraFamily struct{}
 
-func (f FedoraFamily) CreateUser(username string) string {
+func (os FedoraFamily) CreateUser(username string) string {
 	return fmt.Sprintf("useradd %s", username)
 }
 
