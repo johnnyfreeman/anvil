@@ -20,6 +20,16 @@ func DetectOS(ctx context.Context, executor Executor) (*OSInfo, error) {
 		return nil, fmt.Errorf("failed to exec on target: %w", err)
 	}
 
+	// Handle dry run mode
+	if strings.Contains(output, "[DRY RUN]") {
+		return &OSInfo{
+			ID:       "ubuntu",
+			Version:  "24.04",
+			Pretty:   "Ubuntu 24.04 LTS (Dry Run)",
+			Detected: Debian{},
+		}, nil
+	}
+
 	info := OSInfo{}
 
 	for line := range strings.SplitSeq(output, "\n") {

@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os/exec"
 	"slices"
@@ -103,4 +104,40 @@ func (e *FakeExecutor) Execute(ctx context.Context, command string, observer Exe
 
 func (e *FakeExecutor) Executed(command string) bool {
 	return slices.Contains(e.History, command)
+}
+
+type DryRunExecutor struct {
+	Commands       []string
+	simulatedError bool
+}
+
+func (e *DryRunExecutor) Execute(ctx context.Context, command string, observer ExecutionObserver) (string, error) {
+	if observer != nil {
+		if err := observer.OnExecutionStart(command); err != nil {
+			return "", err
+		}
+		defer func() {
+			if err := observer.OnExecutionEnd(); err != nil {
+				// Log error but don't fail execution
+			}
+		}()
+	}
+
+	e.Commands = append(e.Commands, command)
+
+	if observer != nil {
+		if err := observer.OnExecutionOutput("[DRY RUN] Command would be executed\n"); err != nil {
+			// Log error but continue
+		}
+	}
+
+	// Simulate realistic command behavior for dry run
+	// This helps actions make proper decisions about next steps
+	if strings.Contains(command, "id -u") && !e.simulatedError {
+		// Simulate user not found to trigger user creation (only once)
+		e.simulatedError = true
+		return "", fmt.Errorf("exit status 1")
+	}
+
+	return "[DRY RUN] Command would be executed", nil
 }
