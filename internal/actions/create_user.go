@@ -41,34 +41,25 @@ func NewCreateUser(username string, opts ...CreateUserOptsFunc) *CreateUser {
 }
 
 func (a CreateUser) Handle(ctx context.Context, ex core.Executor, os core.OS, observer core.ActionObserver) error {
-	if observer != nil {
-		if err := observer.OnActionStart(); err != nil {
-			return err
-		}
-		defer func() {
-			if err := observer.OnActionEnd(); err != nil {
-				// Log error but don't fail action
+	return core.WithObserver(observer, func() error {
+		_, err := ex.Execute(ctx, os.CheckUser(a.Username), observer)
+
+		if err != nil {
+			_, err = ex.Execute(ctx, os.CreateUser(a.Username), observer)
+			if err != nil {
+				return err
 			}
-		}()
-	}
-
-	_, err := ex.Execute(ctx, os.CheckUser(a.Username), observer)
-
-	if err != nil {
-		_, err = ex.Execute(ctx, os.CreateUser(a.Username), observer)
-		if err != nil {
-			return err
 		}
-	}
 
-	if a.CreateUserOpts.Group != nil {
-		_, err = ex.Execute(ctx, os.GroupUser(a.CreateUserOpts.Username, *a.CreateUserOpts.Group), observer)
-		if err != nil {
-			return err
+		if a.CreateUserOpts.Group != nil {
+			_, err = ex.Execute(ctx, os.GroupUser(a.CreateUserOpts.Username, *a.CreateUserOpts.Group), observer)
+			if err != nil {
+				return err
+			}
 		}
-	}
 
-	return nil
+		return nil
+	})
 }
 
 var _ core.Action = (*CreateUser)(nil)

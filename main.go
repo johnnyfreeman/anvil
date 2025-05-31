@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/johnnyfreeman/anvil/internal/actions"
+	"github.com/johnnyfreeman/anvil/internal/cli"
 	"github.com/johnnyfreeman/anvil/internal/core"
 )
 
@@ -16,6 +17,7 @@ func main() {
 		fmt.Println("Usage: anvil <command> [args]")
 		fmt.Println("Commands:")
 		fmt.Println("  create-user <username> [--group <group>]")
+		fmt.Println("  install-package <package> [--update]")
 		fmt.Println("  detect-os")
 		os.Exit(1)
 	}
@@ -26,6 +28,8 @@ func main() {
 	switch os.Args[1] {
 	case "create-user":
 		createUserCmd(ctx, executor, os.Args[2:])
+	case "install-package":
+		installPackageCmd(ctx, executor, os.Args[2:])
 	case "detect-os":
 		detectOSCmd(ctx, executor)
 	default:
@@ -47,12 +51,6 @@ func createUserCmd(ctx context.Context, executor core.Executor, args []string) {
 	
 	username := fs.Arg(0)
 	
-	// Detect OS
-	osInfo, err := core.DetectOS(ctx, executor)
-	if err != nil {
-		log.Fatalf("Failed to detect OS: %v", err)
-	}
-	
 	// Create action
 	var opts []actions.CreateUserOptsFunc
 	if *group != "" {
@@ -61,13 +59,36 @@ func createUserCmd(ctx context.Context, executor core.Executor, args []string) {
 	
 	action := actions.NewCreateUser(username, opts...)
 	
-	// Execute with basic observer
-	observer := &cliObserver{}
-	if err := action.Handle(ctx, executor, osInfo.Detected, observer); err != nil {
-		log.Fatalf("Failed to create user: %v", err)
+	// Execute action
+	runner := cli.NewRunner(ctx, executor, &cliObserver{})
+	runner.ExecuteAction(action, fmt.Sprintf("✓ User %s created successfully", username))
+}
+
+func installPackageCmd(ctx context.Context, executor core.Executor, args []string) {
+	fs := flag.NewFlagSet("install-package", flag.ExitOnError)
+	update := fs.Bool("update", false, "Update package lists before installing")
+	
+	if err := fs.Parse(args); err != nil {
+		log.Fatal(err)
 	}
 	
-	fmt.Printf("✓ User %s created successfully\n", username)
+	if fs.NArg() < 1 {
+		log.Fatal("Package name required")
+	}
+	
+	packageName := fs.Arg(0)
+	
+	// Create action
+	var opts []actions.InstallPackageOptsFunc
+	if *update {
+		opts = append(opts, actions.WithUpdate())
+	}
+	
+	action := actions.NewInstallPackage(packageName, opts...)
+	
+	// Execute action
+	runner := cli.NewRunner(ctx, executor, &cliObserver{})
+	runner.ExecuteAction(action, fmt.Sprintf("✓ Package %s installed successfully", packageName))
 }
 
 func detectOSCmd(ctx context.Context, executor core.Executor) {
