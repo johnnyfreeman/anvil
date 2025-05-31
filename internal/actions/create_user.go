@@ -42,8 +42,14 @@ func NewCreateUser(username string, opts ...CreateUserOptsFunc) *CreateUser {
 
 func (a CreateUser) Handle(ctx context.Context, ex core.Executor, os core.OS, observer core.ActionObserver) error {
 	if observer != nil {
-		observer.OnActionStart()
-		defer observer.OnActionEnd()
+		if err := observer.OnActionStart(); err != nil {
+			return err
+		}
+		defer func() {
+			if err := observer.OnActionEnd(); err != nil {
+				// Log error but don't fail action
+			}
+		}()
 	}
 
 	_, err := ex.Execute(ctx, os.CheckUser(a.Username), observer)
