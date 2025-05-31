@@ -4,6 +4,25 @@ import (
 	"fmt"
 )
 
+// systemdServiceManager provides common systemctl-based service management
+type systemdServiceManager struct{}
+
+func (sm systemdServiceManager) StartService(serviceName string) string {
+	return fmt.Sprintf("systemctl start %s", serviceName)
+}
+
+func (sm systemdServiceManager) StopService(serviceName string) string {
+	return fmt.Sprintf("systemctl stop %s", serviceName)
+}
+
+func (sm systemdServiceManager) EnableService(serviceName string) string {
+	return fmt.Sprintf("systemctl enable %s", serviceName)
+}
+
+func (sm systemdServiceManager) RestartService(serviceName string) string {
+	return fmt.Sprintf("systemctl restart %s", serviceName)
+}
+
 type OS interface {
 	CreateUser(username string) string
 	CheckUser(username string) string
@@ -44,19 +63,19 @@ func (os DebianFamily) UpdatePackages() string {
 }
 
 func (os DebianFamily) StartService(serviceName string) string {
-	return fmt.Sprintf("systemctl start %s", serviceName)
+	return systemdServiceManager{}.StartService(serviceName)
 }
 
 func (os DebianFamily) StopService(serviceName string) string {
-	return fmt.Sprintf("systemctl stop %s", serviceName)
+	return systemdServiceManager{}.StopService(serviceName)
 }
 
 func (os DebianFamily) EnableService(serviceName string) string {
-	return fmt.Sprintf("systemctl enable %s", serviceName)
+	return systemdServiceManager{}.EnableService(serviceName)
 }
 
 func (os DebianFamily) RestartService(serviceName string) string {
-	return fmt.Sprintf("systemctl restart %s", serviceName)
+	return systemdServiceManager{}.RestartService(serviceName)
 }
 
 type Ubuntu struct{ DebianFamily }
@@ -89,19 +108,19 @@ func (os FedoraFamily) UpdatePackages() string {
 }
 
 func (os FedoraFamily) StartService(serviceName string) string {
-	return fmt.Sprintf("systemctl start %s", serviceName)
+	return systemdServiceManager{}.StartService(serviceName)
 }
 
 func (os FedoraFamily) StopService(serviceName string) string {
-	return fmt.Sprintf("systemctl stop %s", serviceName)
+	return systemdServiceManager{}.StopService(serviceName)
 }
 
 func (os FedoraFamily) EnableService(serviceName string) string {
-	return fmt.Sprintf("systemctl enable %s", serviceName)
+	return systemdServiceManager{}.EnableService(serviceName)
 }
 
 func (os FedoraFamily) RestartService(serviceName string) string {
-	return fmt.Sprintf("systemctl restart %s", serviceName)
+	return systemdServiceManager{}.RestartService(serviceName)
 }
 
 type Fedora struct{ FedoraFamily }

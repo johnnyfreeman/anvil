@@ -6,82 +6,66 @@ import (
 	"github.com/johnnyfreeman/anvil/internal/core"
 )
 
-// StartService action for starting a system service
-type StartService struct {
+// ServiceOperation represents the type of service operation to perform
+type ServiceOperation int
+
+const (
+	StartService ServiceOperation = iota
+	StopService
+	EnableService
+	RestartService
+)
+
+// ServiceAction performs operations on system services
+type ServiceAction struct {
 	ServiceName string
+	Operation   ServiceOperation
 }
 
-func NewStartService(serviceName string) *StartService {
-	return &StartService{
+func NewStartService(serviceName string) *ServiceAction {
+	return &ServiceAction{
 		ServiceName: serviceName,
+		Operation:   StartService,
 	}
 }
 
-func (a StartService) Handle(ctx context.Context, ex core.Executor, os core.OS, observer core.ActionObserver) error {
+func NewStopService(serviceName string) *ServiceAction {
+	return &ServiceAction{
+		ServiceName: serviceName,
+		Operation:   StopService,
+	}
+}
+
+func NewEnableService(serviceName string) *ServiceAction {
+	return &ServiceAction{
+		ServiceName: serviceName,
+		Operation:   EnableService,
+	}
+}
+
+func NewRestartService(serviceName string) *ServiceAction {
+	return &ServiceAction{
+		ServiceName: serviceName,
+		Operation:   RestartService,
+	}
+}
+
+func (a ServiceAction) Handle(ctx context.Context, ex core.Executor, os core.OS, observer core.ActionObserver) error {
 	return core.WithObserver(observer, func() error {
-		_, err := ex.Execute(ctx, os.StartService(a.ServiceName), observer)
+		var command string
+		switch a.Operation {
+		case StartService:
+			command = os.StartService(a.ServiceName)
+		case StopService:
+			command = os.StopService(a.ServiceName)
+		case EnableService:
+			command = os.EnableService(a.ServiceName)
+		case RestartService:
+			command = os.RestartService(a.ServiceName)
+		}
+		_, err := ex.Execute(ctx, command, observer)
 		return err
 	})
 }
 
-var _ core.Action = (*StartService)(nil)
-
-// StopService action for stopping a system service
-type StopService struct {
-	ServiceName string
-}
-
-func NewStopService(serviceName string) *StopService {
-	return &StopService{
-		ServiceName: serviceName,
-	}
-}
-
-func (a StopService) Handle(ctx context.Context, ex core.Executor, os core.OS, observer core.ActionObserver) error {
-	return core.WithObserver(observer, func() error {
-		_, err := ex.Execute(ctx, os.StopService(a.ServiceName), observer)
-		return err
-	})
-}
-
-var _ core.Action = (*StopService)(nil)
-
-// EnableService action for enabling a system service to start on boot
-type EnableService struct {
-	ServiceName string
-}
-
-func NewEnableService(serviceName string) *EnableService {
-	return &EnableService{
-		ServiceName: serviceName,
-	}
-}
-
-func (a EnableService) Handle(ctx context.Context, ex core.Executor, os core.OS, observer core.ActionObserver) error {
-	return core.WithObserver(observer, func() error {
-		_, err := ex.Execute(ctx, os.EnableService(a.ServiceName), observer)
-		return err
-	})
-}
-
-var _ core.Action = (*EnableService)(nil)
-
-// RestartService action for restarting a system service
-type RestartService struct {
-	ServiceName string
-}
-
-func NewRestartService(serviceName string) *RestartService {
-	return &RestartService{
-		ServiceName: serviceName,
-	}
-}
-
-func (a RestartService) Handle(ctx context.Context, ex core.Executor, os core.OS, observer core.ActionObserver) error {
-	return core.WithObserver(observer, func() error {
-		_, err := ex.Execute(ctx, os.RestartService(a.ServiceName), observer)
-		return err
-	})
-}
-
-var _ core.Action = (*RestartService)(nil)
+var _ core.Action = (*ServiceAction)(nil)

@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"testing"
+
+	"github.com/johnnyfreeman/anvil/internal/testutil"
 )
 
 func Test_RecipeRegistry(t *testing.T) {
@@ -95,8 +97,8 @@ func Test_BaseRecipe_Execute(t *testing.T) {
 		Responses: make(map[string]FakeResponse),
 	}
 	
-	os := &TestOS{}
-	observer := &TestObserver{}
+	os := &testutil.MockOS{}
+	observer := &testutil.MockObserver{}
 	
 	// Execute recipe
 	err := recipe.Execute(context.Background(), executor, os, observer)
@@ -124,46 +126,4 @@ func (a *TestAction) Handle(ctx context.Context, ex Executor, os OS, observer Ac
 	return a.err
 }
 
-// TestOS is a test implementation of OS
-type TestOS struct{}
-
-func (o *TestOS) CreateUser(username string) string {
-	return "create-user " + username
-}
-
-func (o *TestOS) CheckUser(username string) string {
-	return "check-user " + username
-}
-
-func (o *TestOS) GroupUser(username string, group string) string {
-	return "group-user " + username + " " + group
-}
-
-func (o *TestOS) InstallPackage(packageName string) string {
-	return "install " + packageName
-}
-
-func (o *TestOS) RemovePackage(packageName string) string {
-	return "remove " + packageName
-}
-
-func (o *TestOS) UpdatePackages() string {
-	return "update-packages"
-}
-
-func (o *TestOS) StartService(serviceName string) string {
-	return "start " + serviceName
-}
-
-func (o *TestOS) StopService(serviceName string) string {
-	return "stop " + serviceName
-}
-
-func (o *TestOS) EnableService(serviceName string) string {
-	return "enable " + serviceName
-}
-
-func (o *TestOS) RestartService(serviceName string) string {
-	return "restart " + serviceName
-}
 
