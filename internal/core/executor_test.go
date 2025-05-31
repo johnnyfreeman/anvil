@@ -93,13 +93,15 @@ func Test_ParallelSshExecutor_WithObserver(t *testing.T) {
 	}
 }
 
-// TestObserver is a test implementation of ExecutionObserver
+// TestObserver is a test implementation of ActionObserver
 type TestObserver struct {
-	StartCalled  bool
-	EndCalled    bool
-	OutputCalled bool
-	Commands     []string
-	Outputs      []string
+	StartCalled       bool
+	EndCalled         bool
+	OutputCalled      bool
+	ActionStartCalled bool
+	ActionEndCalled   bool
+	Commands          []string
+	Outputs           []string
 }
 
 func (o *TestObserver) OnExecutionStart(command string) error {
@@ -116,5 +118,15 @@ func (o *TestObserver) OnExecutionEnd() error {
 func (o *TestObserver) OnExecutionOutput(output string) error {
 	o.OutputCalled = true
 	o.Outputs = append(o.Outputs, output)
+	return nil
+}
+
+func (o *TestObserver) OnActionStart() error {
+	o.ActionStartCalled = true
+	return nil
+}
+
+func (o *TestObserver) OnActionEnd() error {
+	o.ActionEndCalled = true
 	return nil
 }

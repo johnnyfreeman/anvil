@@ -10,6 +10,7 @@ import (
 	"github.com/johnnyfreeman/anvil/internal/actions"
 	"github.com/johnnyfreeman/anvil/internal/cli"
 	"github.com/johnnyfreeman/anvil/internal/core"
+	"github.com/johnnyfreeman/anvil/internal/recipes"
 )
 
 func main() {
@@ -18,6 +19,8 @@ func main() {
 		fmt.Println("Commands:")
 		fmt.Println("  create-user [--group <group>] <username>")
 		fmt.Println("  install-package [--update] <package>")
+		fmt.Println("  recipe <recipe-name>")
+		fmt.Println("  recipe --list")
 		fmt.Println("  detect-os")
 		fmt.Println("")
 		fmt.Println("Global flags:")
@@ -52,6 +55,8 @@ func main() {
 		createUserCmd(ctx, executor, args[1:])
 	case "install-package":
 		installPackageCmd(ctx, executor, args[1:])
+	case "recipe":
+		recipeCmd(ctx, executor, args[1:])
 	case "detect-os":
 		detectOSCmd(ctx, executor)
 	default:
@@ -111,6 +116,45 @@ func installPackageCmd(ctx context.Context, executor core.Executor, args []strin
 	// Execute action
 	runner := cli.NewRunner(ctx, executor, &cliObserver{})
 	runner.ExecuteAction(action, fmt.Sprintf("✓ Package %s installed successfully", packageName))
+}
+
+func recipeCmd(ctx context.Context, executor core.Executor, args []string) {
+	registry := recipes.DefaultRegistry()
+	
+	if len(args) == 0 {
+		log.Fatal("Recipe name required or --list flag")
+	}
+	
+	// Handle --list flag
+	if args[0] == "--list" {
+		fmt.Println("Available recipes:")
+		for _, recipe := range registry.List() {
+			fmt.Printf("  %-20s %s\n", recipe.Name(), recipe.Description())
+		}
+		return
+	}
+	
+	recipeName := args[0]
+	
+	// Check if recipe exists
+	recipe, exists := registry.Get(recipeName)
+	if !exists {
+		fmt.Printf("Recipe '%s' not found.\n\n", recipeName)
+		fmt.Println("Available recipes:")
+		for _, r := range registry.List() {
+			fmt.Printf("  %-20s %s\n", r.Name(), r.Description())
+		}
+		os.Exit(1)
+	}
+	
+	// Execute recipe
+	runner := cli.NewRunner(ctx, executor, &cliObserver{})
+	action := actions.NewExecuteRecipe(recipeName, registry)
+	
+	fmt.Printf("🚀 Executing recipe: %s\n", recipe.Description())
+	fmt.Printf("📋 Actions: %d\n\n", len(recipe.Actions()))
+	
+	runner.ExecuteAction(action, fmt.Sprintf("✓ Recipe '%s' completed successfully", recipeName))
 }
 
 func detectOSCmd(ctx context.Context, executor core.Executor) {
